@@ -42,6 +42,14 @@ The image assumes that your application has a file named
 dependencies and defining its [start
 script](https://docs.npmjs.com/misc/scripts#default-values).
 
+It also assumes that you have a file named [`.dockerignore`](https://docs.docker.com/engine/reference/builder/#/dockerignore-file) otherwise it will copy your local npm modules:
+
+```
+npm_modules
+```
+
+We have assembled a [Best Practices Guide](./docs/BestPractices.md) for those using these images on a daily basis.
+
 ## Run a single Node.js script
 
 For many simple, single file projects, you may find it inconvenient to write a
@@ -51,6 +59,51 @@ Node.js Docker image directly:
 ```console
 $ docker run -it --rm --name my-running-script -v "$PWD":/usr/src/app -w
 /usr/src/app node:4 node your-daemon-or-script.js
+```
+
+## Verbosity
+
+By default the Node.js Docker Image has npm log verbosity set to `info` instead
+of the default `warn`. This is because of the way Docker is isolated from the
+host operating system and you are not guaranteed to be able to retrieve the
+`npm-debug.log` file when npm fails.
+
+When npm fails, it writes it's verbose log to a log file inside the container.
+If npm fails during an install when building a Docker Image with the `docker
+build` command, this log file will become inaccessible when Docker exits.
+
+The Docker Working Group have chosen to be overly verbose during a build to
+provide an easy audit trail when install fails. If you prefer npm to be less
+verbose you can easily reset the verbosity of npm using the following
+techniques:
+
+### Dockerfile
+
+If you create your own `Dockerfile` which inherits from the `node` image you can
+simply use `ENV` to override `NPM_CONFIG_LOGLEVEL`.
+
+```
+FROM node
+ENV NPM_CONFIG_LOGLEVEL warn
+...
+```
+
+### Docker Run
+
+If you run the node image using `docker run˙ you can use the `-e` flag to
+override `NPM_CONFIG_LOGLEVEL`.
+
+```
+$ docker run -e NPM_CONFIG_LOGLEVEL=warn node ...
+```
+
+### NPM run
+
+If you are running npm commands you can use `--loglevel` to control the
+verbosity of the output.
+
+```
+$ docker run node npm --loglevel=warn ...
 ```
 
 # Image Variants
@@ -97,6 +150,10 @@ This `onbuild` variant will only install npm packages according to the
 discussion in
 [`nodejs/docker-node#65`](https://github.com/nodejs/docker-node/issues/65).
 
+Note that npm installs devDependencies by default, which is undesirable if
+you're building a production image. To avoid this pass NODE_ENV as a build
+argument i.e. `docker build --build-arg NODE_ENV=production …`.
+
 ## `node:slim`
 
 This image does not contain the common packages contained in the default tag and
@@ -122,13 +179,22 @@ Please see [the Docker installation
 documentation](https://docs.docker.com/installation/) for details on how to
 upgrade your Docker daemon.
 
-# People
+# Governance and Current Members
 
-Current Project Team Members:
+The Node.js Docker Image is governed by the Docker Working Group. See
+[GOVERNANCE.md](https://github.com/nodejs/docker-node/blob/master/GOVERNANCE.md)
+to learn more about the group's structure and [CONTRIBUTING.md](#) for guidance
+about the expectations for all contributors to this project.
 
- * [@chorrell](https://github.com/chorrell)
- * [@hmalphettes](https://www.github.com/hmalphettes)
- * [@jlmitch5](https://www.github.com/jlmitch5)
- * [@pesho](https://www.github.com/pesho)
- * [@Starefossen](https://www.github.com/starefossen)
- * [@wblankenship](https://www.github.com/wblankenship)
+## Docker Working Group Members
+
+ * Christopher Horrell ([chorrell](https://github.com/chorrell))
+ * Hans Kristian Flaatten ([starefossen](https://github.com/starefossen))
+ * Hugues Malphettes ([hmalphettes](https://github.com/hmalphettes))
+ * John Mitchell ([jlmitch5](https://github.com/jlmitch5))
+ * Peter Petrov ([pesho](https://github.com/pesho))
+ * William Blankenship ([retrohacker](https://github.com/retrohacker))
+
+## Docker Working Group Collaborators
+
+ * Mikeal Rogers ([mikeal](https://github.com/mikeal))
